@@ -1,0 +1,69 @@
+# Maven
+# Build your Java project and prepare it for production deployment.
+# Learn more: https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger:
+  - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  # Specify production environment settings
+  environment: "Production"
+  javaVersion: "1.11"
+  artifactName: "production-war"
+
+steps:
+  # Step 1: Check out code
+  - task: Checkout@1
+    displayName: "Checkout code"
+
+  # Step 2: Set up JDK
+  - task: UseJavaVersion@1
+    displayName: "Set up Java"
+    inputs:
+      versionSpec: "$(javaVersion)"
+      architecture: "x64"
+
+  # Step 3: Build with Maven
+  - task: Maven@3
+    displayName: "Build with Maven"
+    inputs:
+      mavenPomFile: "pom.xml"
+      mavenOptions: "-Xmx3072m"
+      javaHomeOption: "JDKVersion"
+      jdkVersionOption: "$(javaVersion)"
+      jdkArchitectureOption: "x64"
+      publishJUnitResults: true
+      testResultsFiles: "**/surefire-reports/TEST-*.xml"
+      goals: "package"
+
+  # Step 4: Copy WAR file to staging directory
+  - task: CopyFiles@2
+    displayName: "Copy WAR file to staging"
+    inputs:
+      contents: "**/*.war"
+      targetFolder: "$(build.artifactstagingdirectory)"
+
+  # Step 5: Publish build artifacts
+  - task: PublishBuildArtifacts@1
+    displayName: "Publish build artifacts"
+    inputs:
+      PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+      ArtifactName: "$(artifactName)"
+      publishLocation: "Container"
+
+  # Step 6: Deploy to production (optional, update for your deployment method)
+  # Uncomment and configure deployment steps if needed
+  # - task: AzureRmWebAppDeployment@4
+  #   displayName: "Deploy to Azure Web App"
+  #   inputs:
+  #     azureSubscription: "Your Azure Subscription"
+  #     appType: "webApp"
+  #     WebAppName: "YourAppName"
+  #     package: "$(Build.ArtifactStagingDirectory)/$(artifactName).war"
+
+  # Optional: Notify team or update status
+  # - task: SlackNotification@1
+  #   displayName: "Notify team on Slack"
